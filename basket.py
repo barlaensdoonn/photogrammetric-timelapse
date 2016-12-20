@@ -27,8 +27,8 @@ def get_options():
         for a in range(1, len(sys.argv)):
             options = options + " " + sys.argv[a]
         SCMD = SCMD + options
-        send = SCMD.encode()
 
+    send = SCMD.encode()
     return send
 
 
