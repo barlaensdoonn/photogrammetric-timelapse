@@ -5,7 +5,17 @@
 import socket
 import struct
 import subprocess
+import time
 import datetime
+import picamera
+
+pixels = (2592, 1944)
+framerate = 1
+led = False
+vflip = True
+hflip = True
+meter_mode = 'backlit'
+iso = 100
 
 
 def config_socket():
@@ -36,8 +46,23 @@ if __name__ == '__main__':
             print("Received cmd: {}".format(str(rcmd)))
             print("Data: {}".format(rdata))
 
-        if rcmd == 1:
+        if rcmd == 1 and rdata:
             print("shooting still @ {}".format(datetime.datetime.now().strftime("%H:%M:%S")))
             cmd = "raspistill " + rdata
             pid = subprocess.call(cmd, shell=True)
             print("done shooting still @ {}\n".format(datetime.datetime.now().strftime("%H:%M:%S")))
+
+        elif rcmd == 1:
+            with picamera.PiCamera(resolution=pixels, framerate=framerate) as picam:
+                picam.iso = iso
+                picam.led = led
+                picam.vflip = vflip
+                picam.hflip = hflip
+                picam.meter_mode = meter_mode
+
+                print("calibrating picam instance")
+                time.sleep(5)
+
+                print("shooting still @ {}".format(datetime.datetime.now().strftime("%H:%M:%S")))
+                picam.capture('/home/pi/tests/socket_pics/test02-{}.jpg'.format(socket.gethostname()))
+                print("done shooting still @ {}\n".format(datetime.datetime.now().strftime("%H:%M:%S")))
