@@ -23,23 +23,20 @@ def get_options():
     options = ""
     SCMD = chr(1)  # Command 1 = Shoot photo
 
-    for a in range(1, len(sys.argv)):
-        options = options + " " + sys.argv[a]
-    SCMD = SCMD + options
-    send = SCMD.encode()
+    if len(sys.argv) >= 2:
+        for a in range(1, len(sys.argv)):
+            options = options + " " + sys.argv[a]
+        SCMD = SCMD + options
+        send = SCMD.encode()
 
     return send
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("please provide raspistill command options")
+    print("Sending shooting command...")
 
-    else:
-        print("Sending shooting command...")
+    sock = config_socket()
+    send = get_options()
 
-        sock = config_socket()
-        send = get_options()
-
-        sock.sendto(send, (MCAST_GRP, MCAST_PORT))
-        sock.close()
+    sock.sendto(send, (MCAST_GRP, MCAST_PORT))
+    sock.close()

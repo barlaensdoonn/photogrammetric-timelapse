@@ -31,9 +31,11 @@ if __name__ == '__main__':
         data = sock.recv(10240).decode()
         rdata = data[1:]
         rcmd = ord(data[0])
+
         if debug == 1:
             print("Received cmd: {}".format(str(rcmd)))
             print("Data: {}".format(rdata))
+
         if rcmd == 1:
             print("shooting still @ {}".format(datetime.datetime.now().strftime("%H:%M:%S")))
             cmd = "raspistill " + rdata
