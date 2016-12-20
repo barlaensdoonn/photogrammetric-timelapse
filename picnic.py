@@ -27,14 +27,15 @@ if __name__ == '__main__':
     sock = config_socket()
 
     while True:
+        print("listening...")
         data = sock.recv(10240).decode()
         rdata = data[1:]
         rcmd = ord(data[0])
         if debug == 1:
             print("Received cmd: {}".format(str(rcmd)))
             print("Data: {}".format(rdata))
-        if (rcmd == 1):
+        if rcmd == 1:
             print("shooting still @ {}".format(datetime.datetime.now().strftime("%H:%M:%S")))
             cmd = "raspistill " + rdata
             pid = subprocess.call(cmd, shell=True)
-            print("done shooting still @ {}".format(datetime.datetime.now().strftime("%H:%M:%S")))
+            print("done shooting still @ {}\n".format(datetime.datetime.now().strftime("%H:%M:%S")))
