@@ -5,6 +5,7 @@
 import socket
 import struct
 import subprocess
+import datetime
 
 
 def config_socket():
@@ -21,6 +22,7 @@ def config_socket():
 
 debug = 1  # Turn debug message on/off
 
+
 if __name__ == '__main__':
     sock = config_socket()
 
@@ -32,6 +34,7 @@ if __name__ == '__main__':
             print("Received cmd: {}".format(str(rcmd)))
             print("Data: {}".format(rdata))
         if (rcmd == 1):
-            print("shooting")
+            print("shooting still @ {}".format(datetime.datetime.now().strftime("%H:%M:%S")))
             cmd = "raspistill " + rdata
             pid = subprocess.call(cmd, shell=True)
+            print("done shooting still @ {}".format(datetime.datetime.now().strftime("%H:%M:%S")))
