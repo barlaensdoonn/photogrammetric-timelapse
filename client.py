@@ -21,7 +21,7 @@ class MQTTCam(mqtt.Client):
         print('topic: {}   QOS: {}   payload: {}'.format(msg.topic, str(msg.qos), payload))
 
     def run(self):
-        self.connect(self.host, self.port, self.keepalive)
+        self.connect(self.broker, self.port, self.keepalive)
         self.subscribe(self.topic, self.qos)
 
         response_code = 0
