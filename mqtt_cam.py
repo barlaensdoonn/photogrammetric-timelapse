@@ -7,7 +7,7 @@ import os
 import logging
 from time import sleep
 from datetime import datetime
-from PiCamera import PiCamera
+from picamera import PiCamera
 import paho.mqtt.client as mqtt
 
 
