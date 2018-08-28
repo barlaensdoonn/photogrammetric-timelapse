@@ -48,7 +48,7 @@ class MQTTCam(mqtt.Client):
         self.logger.info('message received')
         self.logger.info('topic: {}  QOS: {}  payload: {}'.format(msg.topic, str(msg.qos), payload))
 
-        if msg.topic == 'shutter' and payload == 1:
+        if msg.topic == 'shutter' and payload == '1':
             self.snap_pic()
 
     def run(self):
