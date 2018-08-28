@@ -5,6 +5,7 @@
 
 import os
 import logging
+import subprocess
 from time import sleep
 from datetime import datetime
 from picamera import PiCamera
@@ -37,9 +38,20 @@ class MQTTCam(mqtt.Client):
             sleep(2)
             now = datetime.now()
             self.logger.info('time before capture: {}'.format(datetime.now()))
-            cam.capture(os.path.join(self.basepath, '{}_{}.jpg'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M"))))
+            pic = os.path.join(self.basepath, '{}_{}.jpg'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M")))
+            cam.capture(pic)
             self.logger.info('time after capture: {}'.format(datetime.now()))
             self.logger.info('snapped a pic')
+
+        return pic
+
+    def copy_pic(self, pic_path):
+        remote_host = 'pi@{}:'.format(self.broker)
+        remote_pic_path = os.path.join(remote_host, '~', 'test_pics')
+        status = subprocess.call(['scp', '-p', pic_path, remote_pic_path], stdout=subprocess.DEVNULL)
+
+        if status == 1:
+            self.logger.info('copied {} to {}'.format(pic_path, remote_pic_path))
 
     def on_message(self, mqttc, obj, msg):
         payload = msg.payload.decode()
@@ -47,7 +59,8 @@ class MQTTCam(mqtt.Client):
         self.logger.info('topic: {}  QOS: {}  payload: {}'.format(msg.topic, str(msg.qos), payload))
 
         if msg.topic == 'shutter' and payload == '1':
-            self.snap_pic()
+            snapped = self.snap_pic()
+            self.copy_pic(snapped)
 
     def run(self):
         self.connect(self.broker, self.port, self.keepalive)
