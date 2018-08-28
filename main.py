@@ -53,7 +53,7 @@ if __name__ == '__main__':
     msg = 1
 
     if hostname in broker:
-        logger.info(f'publishing msg {msg} to topic {topic}')
+        logger.info('publishing msg {} to topic {}'.format(msg, topic))
         publish.single(topic, msg, hostname=broker, qos=qos)
     else:
         client = MQTTCam(broker=broker, topic=topic, qos=2)
