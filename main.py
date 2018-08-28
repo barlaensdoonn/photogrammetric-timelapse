@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # publish trigger command to MQTT
 # 8/25/18
-# updated 8/27/18
+# updated 8/28/18
 
 import os
 import yaml
@@ -46,7 +46,8 @@ def configure_logger(basepath, hostname):
 
 if __name__ == '__main__':
     hostname = get_hostname()
-    logger = configure_logger(get_basepath(), hostname)
+    basepath = get_basepath()
+    logger = configure_logger(basepath, hostname)
     broker = 'photogram00.local'
     topic = 'shutter'
     qos = 2
@@ -56,5 +57,5 @@ if __name__ == '__main__':
         logger.info('publishing msg {} to topic {}'.format(msg, topic))
         publish.single(topic, msg, hostname=broker, qos=qos)
     else:
-        client = MQTTCam(broker=broker, topic=topic, qos=2)
+        client = MQTTCam(hostname, basepath, broker=broker, topic=topic, qos=2)
         client.run()

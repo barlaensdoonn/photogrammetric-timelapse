@@ -3,3 +3,4 @@
 *.log
 /ignore
 __pycache__/
+*.jpg

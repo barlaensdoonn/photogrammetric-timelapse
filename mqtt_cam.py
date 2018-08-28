@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # process trigger command passed over MQTT
 # 8/25/18
-# updated 8/27/18
+# updated 8/28/18
 
 import os
 import logging
@@ -11,17 +11,12 @@ from picamera import PiCamera
 import paho.mqtt.client as mqtt
 
 
-def get_basepath():
-    '''we need the absolute path when running scripts as a systemd service'''
-    return os.path.dirname(os.path.realpath(__file__))
-
-
 class MQTTCam(mqtt.Client):
 
-    basepath = get_basepath()
-
-    def __init__(self, broker='mqtt-broker.local', port=1883, topic='', qos=0, keepalive=60, *args, **kwargs):
+    def __init__(self, hostname, basepath, broker='mqtt-broker.local', port=1883, topic='', qos=0, keepalive=60, *args, **kwargs):
         self.logger = self._init_logger()
+        self.hostname = hostname
+        self.basepath = basepath
         self.broker = broker
         self.port = port
         self.topic = topic
@@ -42,7 +37,7 @@ class MQTTCam(mqtt.Client):
             sleep(2)
             now = datetime.now()
             self.logger.info('time before capture: {}'.format(datetime.now()))
-            cam.capture(os.path.join(self.basepath, '{}.jpg'.format(now.strftime("%Y-%m-%d_%H-%M"))))
+            cam.capture(os.path.join(self.basepath, '{}_{}.jpg'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M"))))
             self.logger.info('time after capture: {}'.format(datetime.now()))
             self.logger.info('snapped a pic')
 
