@@ -35,12 +35,15 @@ class MQTTCam(mqtt.Client):
         return logger
 
     def snap_pic(self):
+        self.logger.info('time entering snap_pic(): {}'.format(datetime.now()))
         self.logger.info('snapping a pic')
 
         with PiCamera(resolution=(2592, 1944)) as cam:
             sleep(2)
             now = datetime.now()
+            self.logger.info('time before capture: {}'.format(datetime.now()))
             cam.capture(os.path.join(self.basepath, '{}.jpg'.format(now.strftime("%Y-%m-%d_%H-%M"))))
+            self.logger.info('time after capture: {}'.format(datetime.now()))
             self.logger.info('snapped a pic')
 
     def on_message(self, mqttc, obj, msg):
