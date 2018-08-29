@@ -46,12 +46,12 @@ class MQTTCam(mqtt.Client):
         return pic
 
     def copy_pic(self, pic_path):
-        remote_host = 'pi@{}:'.format(self.broker)
-        remote_pic_path = os.path.join(remote_host, '~', 'test_pics')
+        remote_host = 'pi@{}:~'.format(self.broker)
+        remote_pic_path = os.path.join(remote_host, 'test_pics')
         status = subprocess.call(['scp', '-p', pic_path, remote_pic_path], stdout=subprocess.DEVNULL)
 
-        if status == 1:
-            self.logger.info('copied {} to {}'.format(pic_path, remote_pic_path))
+        if status == 0:
+            self.logger.info('copied {} to {}'.format(pic_path.split('/')[-1], remote_pic_path))
 
     def on_message(self, mqttc, obj, msg):
         payload = msg.payload.decode()
