@@ -1,6 +1,6 @@
 .DS_Store
 .AppleDouble
 *.log
-/ignore
 __pycache__/
 *.jpg
+keys.py

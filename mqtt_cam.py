@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # process trigger command passed over MQTT
 # 8/25/18
-# updated 8/28/18
+# updated 8/30/18
 
 import os
 import logging
@@ -10,6 +10,7 @@ from time import sleep
 from datetime import datetime
 from picamera import PiCamera
 import paho.mqtt.client as mqtt
+from keys import img_bucket
 
 
 class MQTTCam(mqtt.Client):
@@ -38,7 +39,7 @@ class MQTTCam(mqtt.Client):
             sleep(2)
             now = datetime.now()
             self.logger.info('time before capture: {}'.format(datetime.now()))
-            pic = os.path.join(self.basepath, '{}_{}.jpg'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M")))
+            pic = os.path.join(self.basepath, 'imgs', '{}_{}.jpg'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M-%S")))
             cam.capture(pic)
             self.logger.info('time after capture: {}'.format(datetime.now()))
             self.logger.info('snapped a pic')
@@ -53,6 +54,11 @@ class MQTTCam(mqtt.Client):
         if status == 0:
             self.logger.info('copied {} to {}'.format(pic_path.split('/')[-1], remote_pic_path))
 
+    def sync_pics(self):
+        '''unlike subprocess.run, which blocks until process completes, subprocess.Popen returns immediately'''
+        bucket = os.path.join(img_bucket, self.hostname)
+        return subprocess.Popen(['rsync', '-a', 'imgs/', '--exclude=.gitignore', bucket])
+
     def on_message(self, mqttc, obj, msg):
         payload = msg.payload.decode()
         self.logger.info('message received')
@@ -60,7 +66,8 @@ class MQTTCam(mqtt.Client):
 
         if msg.topic == 'shutter' and payload == '1':
             snapped = self.snap_pic()
-            self.copy_pic(snapped)
+            # self.copy_pic(snapped)
+            self.sync_pics()
 
     def run(self):
         self.connect(self.broker, self.port, self.keepalive)
