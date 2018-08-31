@@ -35,7 +35,7 @@ class MQTTCam(mqtt.Client):
         self.logger.info('time entering snap_pic(): {}'.format(datetime.now()))
         self.logger.info('snapping a pic')
 
-        with PiCamera(resolution=(2592, 1944)) as cam:
+        with PiCamera(resolution=(3280, 2464)) as cam:
             sleep(2)
             now = datetime.now()
             self.logger.info('time before capture: {}'.format(datetime.now()))
@@ -56,6 +56,7 @@ class MQTTCam(mqtt.Client):
 
     def sync_pics(self):
         '''unlike subprocess.run, which blocks until process completes, subprocess.Popen returns immediately'''
+        self.logger.info('syncing pic to remote machine via rsync')
         bucket = os.path.join(img_bucket, self.hostname)
         return subprocess.Popen(['rsync', '-a', 'imgs/', '--exclude=.gitignore', bucket])
 
