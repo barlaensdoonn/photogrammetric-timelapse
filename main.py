@@ -7,6 +7,7 @@ import os
 import yaml
 import logging
 import logging.config
+from time import sleep
 from socket import gethostname
 import paho.mqtt.publish as publish
 from mqtt_cam import MQTTCam
@@ -56,6 +57,7 @@ if __name__ == '__main__':
     if hostname in broker:
         logger.info('publishing msg {} to topic {}'.format(msg, topic))
         publish.single(topic, msg, hostname=broker, qos=qos)
+        sleep(10)
     else:
-        client = MQTTCam(hostname, basepath, broker=broker, topic=topic, qos=2)
+        client = MQTTCam(hostname=hostname, basepath=basepath, broker=broker, topic=topic, qos=2)
         client.run()

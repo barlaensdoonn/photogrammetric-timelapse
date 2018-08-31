@@ -27,7 +27,11 @@ loggers:
         level: INFO
         handlers: [file]
         propogate: False
-    mqtt_cam:
+    mqtt_shutter:
+        level: INFO
+        handlers: [file]
+        propogate: False
+    steady_cam:
         level: INFO
         handlers: [file]
         propogate: False

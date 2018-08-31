@@ -9,66 +9,110 @@ import subprocess
 from time import sleep
 from datetime import datetime
 from picamera import PiCamera
+from fractions import Fraction
 import paho.mqtt.client as mqtt
 from keys import img_bucket
 
 
-class MQTTCam(mqtt.Client):
+class SteadyCam:
 
-    def __init__(self, hostname, basepath, broker='mqtt-broker.local', port=1883, topic='', qos=0, keepalive=60, *args, **kwargs):
+    def __init__(self, hostname=None, basepath=None):
         self.logger = self._init_logger()
+        self.cam = self._init_camera()
         self.hostname = hostname
         self.basepath = basepath
+
+    def _init_logger(self):
+        logger = logging.getLogger('steady_cam')
+        logger.info('mqtt_cam logger instantiated')
+        return logger
+
+    def _init_camera(self, resolution=(3280, 2464), shutter_speed=16670, awb_gains=(Fraction(13, 8), Fraction(439, 256))):
+        '''
+        shutter_speed is set to 16670 to synchronize with the 60hz refresh rate
+        of US electricity. this avoids banding in the images.
+        the default awb_gains value was queried from a picamera instance exposed
+        to 2 daylight balanced bulbs in a studio setting.
+
+        more info:
+        https://picamera.readthedocs.io/en/release-1.13/recipes1.html#capturing-consistent-images
+        https://picamera.readthedocs.io/en/release-1.13/fov.html#sensor-gain
+        '''
+        cam = PiCamera(resolution=resolution)
+        cam.iso = 60
+        cam.shutter_speed = 16670  # sync shutter speed with 60hz refresh rate of US electricity to avoid banding
+        self.logger.info('warming up camera and setting values...')
+        sleep(2)
+        cam.exposure_mode = 'off'  # fix the analog and digital gains, which are not directly settable
+        cam.awb_mode = 'off'
+        cam.awb_gains = awb_gains
+
+        return cam
+
+    def _copy_pic(self, pic_path, bucket):
+        '''use scp to copy a single image to a remote host'''
+        img = pic_path.split('/')[-1]
+        status = subprocess.call(['scp', '-p', pic_path, bucket], stdout=subprocess.DEVNULL)
+
+        if status == 0:
+            self.logger.info('copied {} to {}'.format(img, bucket))
+        else:
+            self.logger.error('there was a problem copying {} to {}'.format(img, bucket))
+
+        return status
+
+    def _sync_pics(self, bucket):
+        '''
+        use rsync to transfer files to a remote host.
+
+        unlike subprocess.run (used in _copy_pic()) which blocks until process
+        completes, subprocess.Popen returns immediately
+        '''
+        self.logger.info('syncing pic to remote machine via rsync')
+        return subprocess.Popen(['rsync', '-a', 'imgs/', '--exclude=.gitignore', bucket])
+
+    def snap_pic(self):
+        self.logger.info('time entering snap_pic(): {}'.format(datetime.now()))
+        self.logger.info('snapping a pic')
+        now = datetime.now()
+        pic = os.path.join(self.basepath, 'imgs', '{}_{}.jpg'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M-%S")))
+        self.cam.capture(pic)
+        self.logger.info('time after capture: {}'.format(datetime.now()))
+        self.logger.info('snapped a pic')
+
+        return pic
+
+    def transfer_pics(self, pic_path, method='rsync'):
+        remote_bucket = os.path.join(img_bucket, self.hostname)
+        return self._sync_pics(remote_bucket) if method == 'rsync' else self._copy_pic(pic_path, remote_bucket)
+
+
+class MQTTCam(mqtt.Client):
+
+    def __init__(self, broker='mqtt-broker.local', port=1883, topic='', qos=0, keepalive=60, *args, **kwargs):
+        self.logger = self._init_logger()
         self.broker = broker
         self.port = port
         self.topic = topic
         self.qos = qos
         self.keepalive = keepalive
         mqtt.Client.__init__(self, *args, **kwargs)
+        self.steadycam = SteadyCam(*args, **kwargs)
 
     def _init_logger(self):
         logger = logging.getLogger('mqtt_cam')
         logger.info('mqtt_cam logger instantiated')
         return logger
 
-    def snap_pic(self):
-        self.logger.info('time entering snap_pic(): {}'.format(datetime.now()))
-        self.logger.info('snapping a pic')
-
-        with PiCamera(resolution=(3280, 2464)) as cam:
-            sleep(2)
-            now = datetime.now()
-            self.logger.info('time before capture: {}'.format(datetime.now()))
-            pic = os.path.join(self.basepath, 'imgs', '{}_{}.jpg'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M-%S")))
-            cam.capture(pic)
-            self.logger.info('time after capture: {}'.format(datetime.now()))
-            self.logger.info('snapped a pic')
-
-        return pic
-
-    def copy_pic(self, pic_path):
-        remote_host = 'pi@{}:~'.format(self.broker)
-        remote_pic_path = os.path.join(remote_host, 'test_pics')
-        status = subprocess.call(['scp', '-p', pic_path, remote_pic_path], stdout=subprocess.DEVNULL)
-
-        if status == 0:
-            self.logger.info('copied {} to {}'.format(pic_path.split('/')[-1], remote_pic_path))
-
-    def sync_pics(self):
-        '''unlike subprocess.run, which blocks until process completes, subprocess.Popen returns immediately'''
-        self.logger.info('syncing pic to remote machine via rsync')
-        bucket = os.path.join(img_bucket, self.hostname)
-        return subprocess.Popen(['rsync', '-a', 'imgs/', '--exclude=.gitignore', bucket])
-
     def on_message(self, mqttc, obj, msg):
         payload = msg.payload.decode()
-        self.logger.info('message received')
-        self.logger.info('topic: {}  QOS: {}  payload: {}'.format(msg.topic, str(msg.qos), payload))
+        self.logger.debug('message received')
+        self.logger.debug('topic: {}  QOS: {}  payload: {}'.format(msg.topic, str(msg.qos), payload))
 
         if msg.topic == 'shutter' and payload == '1':
-            snapped = self.snap_pic()
-            # self.copy_pic(snapped)
-            self.sync_pics()
+            self.logger.info('received snap pic command')
+            snapped = self.steadycam.snap_pic()
+            self.steadycam.transfer_pics(snapped)
 
     def run(self):
         self.connect(self.broker, self.port, self.keepalive)
@@ -78,8 +122,3 @@ class MQTTCam(mqtt.Client):
         while response_code == 0:
             response_code = self.loop()
         return response_code
-
-
-if __name__ == '__main__':
-    client = MQTTCam(broker='photogram00.local', topic='shutter', qos=2)
-    client.run()
