@@ -11,7 +11,7 @@ import logging.config
 from time import sleep
 from socket import gethostname
 import paho.mqtt.publish as publish
-from mqtt_cam import MQTTCam
+from mqtt_shutter import MQTTShutter
 
 
 def _get_logfile_name(basepath, hostname):
@@ -62,7 +62,7 @@ if __name__ == '__main__':
             sleep(10)
         else:
             try:
-                client = MQTTCam(basepath, hostname, broker=broker, topic=topic, qos=2)
+                client = MQTTShutter(basepath, hostname, broker=broker, topic=topic, qos=2)
                 client.run()
             except Exception:
                 logger.error('exception!!')

@@ -32,7 +32,7 @@ loggers:
         handlers: [file]
         propogate: False
     steady_cam:
-        level: INFO
+        level: DEBUG
         handlers: [file]
         propogate: False
 
