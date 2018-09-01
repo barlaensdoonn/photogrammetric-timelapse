@@ -57,10 +57,13 @@ if __name__ == '__main__':
 
     try:
         if hostname in broker:
-            logger.info('publishing msg {} to topic {}'.format(msg, topic))
-            publish.single(topic, msg, hostname=broker, qos=qos)
-            sleep(10)
+            # if we are the broker, publish snap pic command indefinitely
+            while True:
+                logger.info('publishing msg {} to topic {}'.format(msg, topic))
+                publish.single(topic, msg, hostname=broker, qos=qos)
+                sleep(10)
         else:
+            # if we're not the broker then we should have a camera and be listening for shutter commands
             try:
                 client = MQTTShutter(basepath, hostname, broker=broker, topic=topic, qos=2)
                 client.run()
