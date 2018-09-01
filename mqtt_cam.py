@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # process trigger command passed over MQTT
 # 8/25/18
-# updated 8/30/18
+# updated 8/31/18
 
 import os
 import logging
@@ -16,7 +16,7 @@ from keys import img_bucket
 
 class SteadyCam:
 
-    def __init__(self, hostname=None, basepath=None):
+    def __init__(self, basepath, hostname):
         self.logger = self._init_logger()
         self.cam = self._init_camera()
         self.hostname = hostname
@@ -46,6 +46,7 @@ class SteadyCam:
         cam.exposure_mode = 'off'  # fix the analog and digital gains, which are not directly settable
         cam.awb_mode = 'off'
         cam.awb_gains = awb_gains
+        self.logger.info('camera ready')
 
         return cam
 
@@ -86,10 +87,15 @@ class SteadyCam:
         remote_bucket = os.path.join(img_bucket, self.hostname)
         return self._sync_pics(remote_bucket) if method == 'rsync' else self._copy_pic(pic_path, remote_bucket)
 
+    def close(self):
+        '''no one wants memory leaks'''
+        self.logger.info('shutting down camera')
+        self.cam.close()
+
 
 class MQTTCam(mqtt.Client):
 
-    def __init__(self, broker='mqtt-broker.local', port=1883, topic='', qos=0, keepalive=60, *args, **kwargs):
+    def __init__(self, basepath, hostname, broker='mqtt-broker.local', port=1883, topic='', qos=0, keepalive=60, *args, **kwargs):
         self.logger = self._init_logger()
         self.broker = broker
         self.port = port
@@ -97,7 +103,7 @@ class MQTTCam(mqtt.Client):
         self.qos = qos
         self.keepalive = keepalive
         mqtt.Client.__init__(self, *args, **kwargs)
-        self.steadycam = SteadyCam(*args, **kwargs)
+        self.steadycam = SteadyCam(basepath, hostname)
 
     def _init_logger(self):
         logger = logging.getLogger('mqtt_cam')

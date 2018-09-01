@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 # publish trigger command to MQTT
 # 8/25/18
-# updated 8/28/18
+# updated 8/31/18
 
 import os
+import sys
 import yaml
 import logging
 import logging.config
@@ -54,10 +55,22 @@ if __name__ == '__main__':
     qos = 2
     msg = 1
 
-    if hostname in broker:
-        logger.info('publishing msg {} to topic {}'.format(msg, topic))
-        publish.single(topic, msg, hostname=broker, qos=qos)
-        sleep(10)
-    else:
-        client = MQTTCam(hostname=hostname, basepath=basepath, broker=broker, topic=topic, qos=2)
-        client.run()
+    try:
+        if hostname in broker:
+            logger.info('publishing msg {} to topic {}'.format(msg, topic))
+            publish.single(topic, msg, hostname=broker, qos=qos)
+            sleep(10)
+        else:
+            try:
+                client = MQTTCam(basepath, hostname, broker=broker, topic=topic, qos=2)
+                client.run()
+            except Exception:
+                logger.error('exception!!')
+                raise
+            finally:
+                # shutdown our camera to prevent GPU memory leak
+                client.steadycam.close()
+    except KeyboardInterrupt:
+        logger.info('user exit received...')
+        logger.info('exiting')
+        sys.exit()
