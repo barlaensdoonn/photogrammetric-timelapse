@@ -103,7 +103,7 @@ class SteadyCam:
         return self._sync_pics() if method == 'rsync' else self._copy_pic(pic_path)
 
     def delete_pic(self, pic_path):
-        self.logger.info(f"deleting pic: {pic_path.split('/')[-1]}")
+        self.logger.info("deleting pic: {}".format(pic_path.split('/')[-1]))
         os.remove(pic_path)
 
     def close(self):
