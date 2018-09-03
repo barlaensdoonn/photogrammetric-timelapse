@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # process trigger command passed over MQTT
 # 8/25/18
-# updated 8/31/18
+# updated 9/3/18
 
 import os
 import logging
@@ -21,6 +21,8 @@ class SteadyCam:
         self.cam = self._init_camera()
         self.hostname = hostname
         self.basepath = basepath
+        self.remote_bucket = os.path.join(img_bucket, self.hostname)
+        self.pic_path = os.path.join(self.basepath, 'imgs')
 
     def _init_logger(self):
         logger = logging.getLogger('steady_cam')
@@ -50,19 +52,19 @@ class SteadyCam:
 
         return cam
 
-    def _copy_pic(self, pic_path, bucket):
+    def _copy_pic(self, pic_path):
         '''use scp to copy a single image to a remote host'''
         img = pic_path.split('/')[-1]
-        status = subprocess.call(['scp', '-p', pic_path, bucket], stdout=subprocess.DEVNULL)
+        status = subprocess.call(['scp', '-p', pic_path, self.remote_bucket], stdout=subprocess.DEVNULL)
 
         if status == 0:
-            self.logger.info('copied {} to {}'.format(img, bucket))
+            self.logger.info('copied {} to remote host'.format(img))
         else:
-            self.logger.error('there was a problem copying {} to {}'.format(img, bucket))
+            self.logger.error('there was a problem copying {} to remote host'.format(img))
 
         return status
 
-    def _sync_pics(self, bucket):
+    def _sync_pics(self):
         '''
         use rsync to transfer files to a remote host.
 
@@ -70,29 +72,42 @@ class SteadyCam:
         completes, subprocess.Popen returns immediately
         '''
         self.logger.info('syncing pic to remote machine via rsync')
-        return subprocess.Popen(['rsync', '-a', 'imgs/', '--exclude=.gitignore', bucket])
+        return subprocess.Popen(['rsync', '-a', self.pic_path, '--exclude=.gitignore', self.remote_bucket])
+
+    def _del_old_pics(self):
+        '''
+        if there are 10 pics or less in imgs/, delete them.
+        otherwise we might want to save them
+        '''
+        pics = [pic.path for pic in os.scandir(self.pic_path) if pic.path.endswith('.jpg')]
+
+        if not pics:
+            self.logger.info('imgs/ directory is clean, no pics to delete')
+        elif len(pics) <= 10:
+            for pic in pics:
+                self.delete_pic(pic)
+        elif len(pics) > 10:
+            self.logger.error('too many pics in imgs/')
+            raise SystemExit('please delete pics manually before proceeding')
 
     def snap_pic(self):
-        self.logger.debug('time entering snap_pic(): {}'.format(datetime.now()))
         self.logger.info('snapping a pic')
         now = datetime.now()
-        pic = os.path.join(self.basepath, 'imgs', '{}_{}.jpg'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M-%S")))
+        pic = os.path.join(self.pic_path, '{}_{}.jpg'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M-%S")))
         self.cam.capture(pic)
-        self.logger.debug('time after capture: {}'.format(datetime.now()))
         self.logger.info('snapped a pic')
 
         return pic
 
     def transfer_pics(self, pic_path, method='rsync'):
-        remote_bucket = os.path.join(img_bucket, self.hostname)
-        return self._sync_pics(remote_bucket) if method == 'rsync' else self._copy_pic(pic_path, remote_bucket)
+        return self._sync_pics() if method == 'rsync' else self._copy_pic(pic_path)
 
     def delete_pic(self, pic_path):
-        self.logger.info('deleting pic: {}'.format(pic_path))
+        self.logger.info(f"deleting pic: {pic_path.split('/')[-1]}")
         os.remove(pic_path)
 
     def close(self):
-        '''no one wants memory leaks'''
+        '''no one wants a leaky memory'''
         self.logger.info('shutting down camera')
         self.cam.close()
 
@@ -109,6 +124,7 @@ class MQTTShutter(mqtt.Client):
         mqtt.Client.__init__(self, *args, **kwargs)
         self.steadycam = SteadyCam(basepath, hostname)
         self.last_pic = ''
+        self._del_old_pics()
 
     def _init_logger(self):
         logger = logging.getLogger('mqtt_shutter')
@@ -122,11 +138,11 @@ class MQTTShutter(mqtt.Client):
 
         if msg.topic == 'shutter' and payload == '1':
             self.logger.info('received snap pic command')
-            
+
             # only delete a pic if we've already taken one
-            if self.last_pic: 
+            if self.last_pic:
                 self.steadycam.delete_pic(self.last_pic)
-            
+
             self.last_pic = self.steadycam.snap_pic()
             self.steadycam.transfer_pics(self.last_pic)
 
