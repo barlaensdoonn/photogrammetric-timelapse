@@ -18,11 +18,12 @@ class SteadyCam:
 
     def __init__(self, basepath, hostname):
         self.logger = self._init_logger()
-        self.cam = self._init_camera()
         self.hostname = hostname
         self.basepath = basepath
         self.remote_bucket = os.path.join(img_bucket, self.hostname)
         self.pic_path = os.path.join(self.basepath, 'imgs')
+        self._del_old_pics()
+        self.cam = self._init_camera()
 
     def _init_logger(self):
         logger = logging.getLogger('steady_cam')
@@ -84,6 +85,7 @@ class SteadyCam:
         if not pics:
             self.logger.info('imgs/ directory is clean, no pics to delete')
         elif len(pics) <= 10:
+            self.logger.info('deleting straggler pics')
             for pic in pics:
                 self.delete_pic(pic)
         elif len(pics) > 10:
@@ -124,7 +126,6 @@ class MQTTShutter(mqtt.Client):
         mqtt.Client.__init__(self, *args, **kwargs)
         self.steadycam = SteadyCam(basepath, hostname)
         self.last_pic = ''
-        self._del_old_pics()
 
     def _init_logger(self):
         logger = logging.getLogger('mqtt_shutter')
