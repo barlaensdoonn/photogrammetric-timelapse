@@ -74,7 +74,7 @@ if __name__ == '__main__':
         'video': 2
     }
 
-    send = msgs['video']
+    send = msgs['photo']
 
     try:
         if hostname in broker:
