@@ -105,7 +105,7 @@ class SteadyCam:
         self.logger.info('recording video for {} seconds'.format(duration))
         self.cam.resolution = (1920, 1080)
         now = datetime.now()
-        vid = os.path.join(self.pic_path, '{}_{}.mp4'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M-%S")))
+        vid = os.path.join(self.pic_path, '{}_{}.h264'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M-%S")))
         self.cam.start_recording(vid)
         self.cam.wait_recording(duration)
         self.cam.stop_recording()
