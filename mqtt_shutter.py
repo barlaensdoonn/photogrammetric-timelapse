@@ -132,6 +132,17 @@ class MQTTShutter(mqtt.Client):
         logger.info('mqtt_shutter logger instantiated')
         return logger
 
+    def trigger_pic(self):
+        # only delete a pic if we've already taken one
+        if self.last_pic:
+            self.steadycam.delete_pic(self.last_pic)
+
+        self.last_pic = self.steadycam.snap_pic()
+        self.steadycam.transfer_pics(self.last_pic)
+
+    def trigger_video(self):
+        pass
+
     def on_message(self, mqttc, obj, msg):
         payload = msg.payload.decode()
         self.logger.debug('message received')
@@ -139,13 +150,10 @@ class MQTTShutter(mqtt.Client):
 
         if msg.topic == 'shutter' and payload == '1':
             self.logger.info('received snap pic command')
-
-            # only delete a pic if we've already taken one
-            if self.last_pic:
-                self.steadycam.delete_pic(self.last_pic)
-
-            self.last_pic = self.steadycam.snap_pic()
-            self.steadycam.transfer_pics(self.last_pic)
+            self.trigger_pic()
+        elif msg.topic == 'shutter' and payload == '2':
+            self.logger.info('received video command')
+            self.trigger_video()
 
     def run(self):
         self.connect(self.broker, self.port, self.keepalive)
