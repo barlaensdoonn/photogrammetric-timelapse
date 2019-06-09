@@ -30,7 +30,7 @@ class SteadyCam:
         logger.info('mqtt_cam logger instantiated')
         return logger
 
-    def _init_camera(self, resolution=(3280, 2464), shutter_speed=16670, awb_gains=(Fraction(13, 8), Fraction(439, 256))):
+    def _init_camera(self, resolution=(3280, 2464), shutter_speed=8335, awb_gains=(Fraction(13, 8), Fraction(439, 256))):
         '''
         shutter_speed is set to 16670 to synchronize with the 60hz refresh rate
         of US electricity. this avoids banding in the images.
