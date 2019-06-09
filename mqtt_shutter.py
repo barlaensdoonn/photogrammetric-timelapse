@@ -169,7 +169,7 @@ class MQTTShutter(mqtt.Client):
             self.trigger_video()
 
     def run(self):
-        self.logger('connecting to MQTT broker {}'.format(self.broker))
+        self.logger.info('connecting to MQTT broker {}'.format(self.broker))
         self.connect(self.broker, self.port, self.keepalive)
         self.subscribe(self.topic, self.qos)
 
