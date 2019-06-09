@@ -101,7 +101,7 @@ class SteadyCam:
 
         return pic
 
-    def record_video(self, duration=10):
+    def record_video(self, duration=60):
         self.logger.info('recording video for {} seconds'.format(duration))
         self.cam.resolution = (1920, 1080)
         now = datetime.now()
@@ -143,15 +143,16 @@ class MQTTShutter(mqtt.Client):
 
     def trigger_pic(self):
         # only delete a pic if we've already taken one
-        if self.last_pic:
-            self.steadycam.delete_pic(self.last_pic)
+        # if self.last_pic:
+        #     self.steadycam.delete_pic(self.last_pic)
 
         self.last_pic = self.steadycam.snap_pic()
         self.steadycam.transfer_pics(self.last_pic)
 
     def trigger_video(self):
-        if self.last_pic:
-            self.steadycam.delete_pic(self.last_pic)
+        # only delete a vid if we've already taken one
+        # if self.last_pic:
+        #     self.steadycam.delete_pic(self.last_pic)
 
         self.last_pic = self.steadycam.record_video()
         self.steadycam.transfer_pics(self.last_pic)
@@ -169,9 +170,10 @@ class MQTTShutter(mqtt.Client):
             self.trigger_video()
 
     def run(self):
-        self.logger.info('connecting to MQTT broker {}'.format(self.broker))
         self.connect(self.broker, self.port, self.keepalive)
         self.subscribe(self.topic, self.qos)
+        self.logger.info('connected to MQTT broker {}'.format(self.broker))
+        self.logger.info('subscribed to topic {}'.format(self.broker))
 
         response_code = 0
         while response_code == 0:
