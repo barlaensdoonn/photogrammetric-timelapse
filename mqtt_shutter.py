@@ -101,6 +101,15 @@ class SteadyCam:
 
         return pic
 
+    def record_video(self, duration=10):
+        self.logger.info('recording video for {} seconds'.format(duration))
+        self.cam.resolution = (1920, 1080)
+        now = datetime.now()
+        vid = os.path.join(self.pic_path, '{}_{}.h264'.format(self.hostname, now.strftime("%Y-%m-%d_%H-%M-%S")))
+        self.cam.start_recording(vid)
+        self.cam.wait_recording(duration)
+        self.cam.stop_recording()
+
     def transfer_pics(self, pic_path, method='rsync'):
         return self._sync_pics() if method == 'rsync' else self._copy_pic(pic_path)
 
@@ -141,7 +150,11 @@ class MQTTShutter(mqtt.Client):
         self.steadycam.transfer_pics(self.last_pic)
 
     def trigger_video(self):
-        pass
+        if self.last_pic:
+            self.steadycam.delete_pic(self.last_pic)
+
+        self.last_pic = self.steadycam.record_video()
+        self.steadycam.transfer_pics(self.last_pic)
 
     def on_message(self, mqttc, obj, msg):
         payload = msg.payload.decode()
@@ -156,6 +169,7 @@ class MQTTShutter(mqtt.Client):
             self.trigger_video()
 
     def run(self):
+        self.logger('connecting to MQTT broker {}'.format(self.broker))
         self.connect(self.broker, self.port, self.keepalive)
         self.subscribe(self.topic, self.qos)
 
