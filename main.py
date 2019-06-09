@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # publish trigger command to MQTT
 # 8/25/18
-# updated 8/31/18
+# updated 6/9/19
 
 import os
 import sys
@@ -46,30 +46,47 @@ def configure_logger(basepath, hostname):
     return _init_logger()
 
 
+def publish_msgs(msg, topic, broker, interval=0, qos=2):
+    '''
+    if interval is not 0, publish msgs at specified interval indefinitely.
+    otherwise publish a single message and exit.
+    '''
+    publishing = True
+
+    while publishing:
+        logger.info('publishing msg {} to topic {}'.format(msg, topic))
+        publish.single(topic, msg, hostname=broker, qos=qos)
+
+        if interval:
+            sleep(interval)
+        else:
+            publishing = False
+
+
 if __name__ == '__main__':
     hostname = get_hostname()
     basepath = get_basepath()
     logger = configure_logger(basepath, hostname)
     broker = 'photogram00.local'
     topic = 'shutter'
-    qos = 2
-    msg = 1
+    msgs = {
+        'photo': 1,
+        'video': 2
+    }
+
+    send = msgs['photo']
 
     try:
         if hostname in broker:
-            # if we are the broker, publish snap pic command indefinitely
-            while True:
-                logger.info('publishing msg {} to topic {}'.format(msg, topic))
-                publish.single(topic, msg, hostname=broker, qos=qos)
-                sleep(10)
+            # if we are the broker, publish msgs
+            publish_msgs(send, topic, broker)
         else:
             # if we're not the broker then we should have a camera and be listening for shutter commands
             try:
                 client = MQTTShutter(basepath, hostname, broker=broker, topic=topic, qos=2)
                 client.run()
             except Exception:
-                logger.error('exception!!')
-                raise
+                logger.exception('exception!!')
             finally:
                 # shutdown our camera to prevent GPU memory leak
                 client.steadycam.close()
