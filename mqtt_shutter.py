@@ -85,7 +85,7 @@ class SteadyCam:
         if not pics:
             self.logger.info('imgs/ directory is clean, no pics to delete')
         else:
-            self.logger.error('there are pics in the imgs/ directory')
+            self.logger.error('there are files in the imgs/ directory')
             proceed = input('delete the pics now? (y/n): ')
             if proceed.lower() != 'y' and proceed.lower() != 'yes':
                 raise SystemExit('exiting to avoid deleting possibly unsaved pics')
@@ -192,7 +192,7 @@ class MQTTShutter(mqtt.Client):
         self.connect(self.broker, self.port, self.keepalive)
         self.subscribe(self.topic, self.qos)
         self.logger.info('connected to MQTT broker {}'.format(self.broker))
-        self.logger.info('subscribed to topic {}'.format(self.broker))
+        self.logger.info('subscribed to topic {}'.format(self.topic))
 
         response_code = 0
         while response_code == 0:
