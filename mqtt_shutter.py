@@ -155,17 +155,17 @@ class MQTTShutter(mqtt.Client):
         return msg.payload.decode()
 
     def _trigger_pic(self):
-        # only delete a pic if we've already taken one
-        # if self.last_pic:
-        #     self.steadycam.delete_pic(self.last_pic)
+        # delete last file generated
+        if self.last_pic:
+            self.steadycam.delete_pic(self.last_pic)
 
         self.last_pic = self.steadycam.snap_pic()
         self.steadycam.transfer_pics(self.last_pic)
 
     def _trigger_video(self):
-        # only delete a vid if we've already taken one
-        # if self.last_pic:
-        #     self.steadycam.delete_pic(self.last_pic)
+        # delete last file generated
+        if self.last_pic:
+            self.steadycam.delete_pic(self.last_pic)
 
         self.last_pic = self.steadycam.record_video()
         self.steadycam.transfer_pics(self.last_pic)
