@@ -85,7 +85,7 @@ class SteadyCam:
         if not pics:
             self.logger.info('imgs/ directory is clean, no pics to delete')
         else:
-            self.logger.error('more than 10 pics in imgs/')
+            self.logger.error('there are pics in the imgs/ directory')
             proceed = input('delete the pics now? (y/n)')
             if proceed.lower() != 'y' and proceed.lower() != 'yes':
                 raise SystemExit('exiting to avoid deleting possibly unsaved pics')
