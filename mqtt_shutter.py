@@ -80,13 +80,13 @@ class SteadyCam:
         if there are pics or in imgs/, ask if we want to delete them.
         exit if we say no.
         '''
-        pics = [pic.path for pic in os.scandir(self.pic_path) if pic.path.endswith('.jpg')]
+        pics = [pic.path for pic in os.scandir(self.pic_path) if pic.path.endswith('.jpg') or pic.path.endswith('.h264')]
 
         if not pics:
             self.logger.info('imgs/ directory is clean, no pics to delete')
         else:
             self.logger.error('there are pics in the imgs/ directory')
-            proceed = input('delete the pics now? (y/n)')
+            proceed = input('delete the pics now? (y/n): ')
             if proceed.lower() != 'y' and proceed.lower() != 'yes':
                 raise SystemExit('exiting to avoid deleting possibly unsaved pics')
             else:
