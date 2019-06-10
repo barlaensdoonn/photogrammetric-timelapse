@@ -150,9 +150,10 @@ class MQTTShutter(mqtt.Client):
 
     def _decode_msg(self, msg):
         '''set logger level to DEBUG to log all received messages'''
+        payload = msg.payload.decode()
         self.logger.debug('message received')
         self.logger.debug('topic: {}  QOS: {}  payload: {}'.format(msg.topic, str(msg.qos), payload))
-        return msg.payload.decode()
+        return payload
 
     def _trigger_pic(self):
         # delete last file generated
@@ -192,7 +193,7 @@ class MQTTShutter(mqtt.Client):
         self.connect(self.broker, self.port, self.keepalive)
         self.subscribe(self.topic, self.qos)
         self.logger.info('connected to MQTT broker {}'.format(self.broker))
-        self.logger.info('subscribed to topic {}'.format(self.topic))
+        self.logger.info('subscribed to topic "{}""'.format(self.topic))
 
         response_code = 0
         while response_code == 0:
