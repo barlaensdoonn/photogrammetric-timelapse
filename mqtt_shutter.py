@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # process trigger command passed over MQTT
 # 8/25/18
-# updated 9/3/18
+# updated 6/9/19
 
 import os
 import logging
@@ -30,7 +30,7 @@ class SteadyCam:
         logger.info('mqtt_cam logger instantiated')
         return logger
 
-    def _init_camera(self, resolution=(3280, 2464), shutter_speed=8335, awb_gains=(Fraction(13, 8), Fraction(439, 256))):
+    def _init_camera(self, resolution=(3280, 2464), shutter_speed=16670, awb_gains=(Fraction(13, 8), Fraction(439, 256))):
         '''
         shutter_speed is set to 16670 to synchronize with the 60hz refresh rate
         of US electricity. this avoids banding in the images.
@@ -69,7 +69,7 @@ class SteadyCam:
         '''
         use rsync to transfer files to a remote host.
 
-        unlike subprocess.run (used in _copy_pic()) which blocks until process
+        unlike subprocess.call (used in _copy_pic()) which blocks until process
         completes, subprocess.Popen returns immediately
         '''
         self.logger.info('syncing pic to remote machine via rsync')
@@ -77,20 +77,22 @@ class SteadyCam:
 
     def _del_old_pics(self):
         '''
-        if there are 10 pics or less in imgs/, delete them.
-        otherwise we might want to save them
+        if there are pics or in imgs/, ask if we want to delete them.
+        exit if we say no.
         '''
         pics = [pic.path for pic in os.scandir(self.pic_path) if pic.path.endswith('.jpg')]
 
         if not pics:
             self.logger.info('imgs/ directory is clean, no pics to delete')
-        elif len(pics) <= 10:
-            self.logger.info('deleting straggler pics')
-            for pic in pics:
-                self.delete_pic(pic)
-        elif len(pics) > 10:
-            self.logger.error('too many pics in imgs/')
-            raise SystemExit('please delete pics manually before proceeding')
+        else:
+            self.logger.error('more than 10 pics in imgs/')
+            proceed = input('delete the pics now? (y/n)')
+            if proceed.lower() != 'y' and proceed.lower() != 'yes':
+                raise SystemExit('exiting to avoid deleting possibly unsaved pics')
+            else:
+                self.logger.info('deleting straggler pics')
+                for pic in pics:
+                    self.delete_pic(pic)
 
     def snap_pic(self):
         self.logger.info('snapping a pic')
@@ -111,6 +113,11 @@ class SteadyCam:
         self.cam.stop_recording()
 
     def transfer_pics(self, pic_path, method='rsync'):
+        '''
+        _sync_pics() will attempt to synchronize the entire folder with rsync,
+        while _copy_pics() must be passed a path to a single pic which it will
+        then try to copy over the network via ssh.
+        '''
         return self._sync_pics() if method == 'rsync' else self._copy_pic(pic_path)
 
     def delete_pic(self, pic_path):
@@ -141,7 +148,13 @@ class MQTTShutter(mqtt.Client):
         logger.info('mqtt_shutter logger instantiated')
         return logger
 
-    def trigger_pic(self):
+    def _decode_msg(self, msg):
+        '''set logger level to DEBUG to log all received messages'''
+        self.logger.debug('message received')
+        self.logger.debug('topic: {}  QOS: {}  payload: {}'.format(msg.topic, str(msg.qos), payload))
+        return msg.payload.decode()
+
+    def _trigger_pic(self):
         # only delete a pic if we've already taken one
         # if self.last_pic:
         #     self.steadycam.delete_pic(self.last_pic)
@@ -149,7 +162,7 @@ class MQTTShutter(mqtt.Client):
         self.last_pic = self.steadycam.snap_pic()
         self.steadycam.transfer_pics(self.last_pic)
 
-    def trigger_video(self):
+    def _trigger_video(self):
         # only delete a vid if we've already taken one
         # if self.last_pic:
         #     self.steadycam.delete_pic(self.last_pic)
@@ -158,16 +171,22 @@ class MQTTShutter(mqtt.Client):
         self.steadycam.transfer_pics(self.last_pic)
 
     def on_message(self, mqttc, obj, msg):
-        payload = msg.payload.decode()
-        self.logger.debug('message received')
-        self.logger.debug('topic: {}  QOS: {}  payload: {}'.format(msg.topic, str(msg.qos), payload))
+        '''
+        message received callback
+        call the method associated with the message payload
+        '''
+        msg_methods = {
+            '1': self._trigger_pic,
+            '2': self._trigger_video
+        }
+        payload = self._decode_msg(msg)
 
-        if msg.topic == 'shutter' and payload == '1':
-            self.logger.info('received snap pic command')
-            self.trigger_pic()
-        elif msg.topic == 'shutter' and payload == '2':
-            self.logger.info('received video command')
-            self.trigger_video()
+        if msg.topic == 'shutter':
+            try:
+                self.logger.info('received command {}'.format(payload))
+                msg_methods[payload]()
+            except KeyError:
+                logger.error('received unrecognizable command: {}'.format(payload))
 
     def run(self):
         self.connect(self.broker, self.port, self.keepalive)
