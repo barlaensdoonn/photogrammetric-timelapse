@@ -193,7 +193,7 @@ class MQTTShutter(mqtt.Client):
         self.connect(self.broker, self.port, self.keepalive)
         self.subscribe(self.topic, self.qos)
         self.logger.info('connected to MQTT broker {}'.format(self.broker))
-        self.logger.info('subscribed to topic "{}""'.format(self.topic))
+        self.logger.info('subscribed to topic "{}"'.format(self.topic))
 
         response_code = 0
         while response_code == 0:
